@@ -168,7 +168,7 @@ export function IntegrationsShowcase() {
                           <div>
                             <div className="font-medium text-sm">{item.name}</div>
                             <div className="text-xs text-gray-600">
-                              {item.models || item.description}
+                              {'models' in item ? item.models : item.description}
                             </div>
                           </div>
                         </div>
