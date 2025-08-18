@@ -2,6 +2,40 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Git Workflow - IMPORTANT
+
+**CRITICAL: Follow these branching rules for ALL changes:**
+
+1. **NEVER commit directly to `main` or `develop` branches**
+2. **ALWAYS create a feature branch for any changes**
+3. **ALWAYS create a Pull Request at the end of each task**
+
+### Workflow Steps:
+```bash
+# 1. Start from develop branch
+git checkout develop
+git pull origin develop
+
+# 2. Create feature branch
+git checkout -b feature/your-feature-name
+
+# 3. Make changes and commit
+git add .
+git commit -m "feat: descriptive message"
+
+# 4. Push and create PR
+git push -u origin feature/your-feature-name
+gh pr create --base develop --title "Feature: Description" --body "Changes made"
+```
+
+### Commit Message Convention:
+- `feat:` New feature
+- `fix:` Bug fix
+- `docs:` Documentation
+- `refactor:` Code refactoring
+- `test:` Test updates
+- `chore:` Maintenance
+
 ## Service Overview
 
 Diagnyx-UI is the marketing and public-facing website for the Diagnyx LLM Observability Platform. Built with Next.js 14, it showcases product features, pricing, documentation, and provides conversion-optimized landing pages.
