@@ -9,12 +9,14 @@ import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuthStore } from '@/store/auth';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  password: z.string().min(1, 'Password is required'),
+  rememberMe: z.boolean().default(false),
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
@@ -28,26 +30,38 @@ export function LoginForm() {
   const {
     register,
     handleSubmit,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: 'demo@diagnyx.ai',
-      password: 'password123',
+      rememberMe: false,
     },
   });
+
+  const watchedRememberMe = watch('rememberMe');
 
   const onSubmit = async (data: LoginFormData) => {
     setError('');
     try {
-      const success = await login(data);
+      const success = await login({
+        email: data.email,
+        password: data.password,
+        rememberMe: data.rememberMe,
+      });
+      
       if (success) {
-        router.push('/dashboard');
+        // Check for redirect query param or default to dashboard
+        const urlParams = new URLSearchParams(window.location.search);
+        const redirectTo = urlParams.get('redirect') || '/dashboard';
+        router.push(redirectTo);
       } else {
-        setError('Invalid email or password');
+        setError('Login failed. Please check your credentials.');
       }
-    } catch (err) {
-      setError('An error occurred. Please try again.');
+    } catch (err: any) {
+      console.error('Login error:', err);
+      setError(err?.message || 'An error occurred. Please try again.');
     }
   };
 
@@ -56,10 +70,10 @@ export function LoginForm() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">
-            Sign in to Diagnyx
+            Welcome back
           </CardTitle>
           <CardDescription className="text-center">
-            Enter your credentials to access your dashboard
+            Sign in to your Diagnyx account
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -69,7 +83,7 @@ export function LoginForm() {
               <Input
                 id="email"
                 type="email"
-                placeholder="demo@diagnyx.ai"
+                placeholder="john@example.com"
                 {...register('email')}
                 className={errors.email ? 'border-red-500' : ''}
               />
@@ -84,7 +98,7 @@ export function LoginForm() {
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="password123"
+                  placeholder="Enter your password"
                   {...register('password')}
                   className={errors.password ? 'border-red-500 pr-10' : 'pr-10'}
                 />
@@ -103,6 +117,25 @@ export function LoginForm() {
               {errors.password && (
                 <p className="text-sm text-red-500">{errors.password.message}</p>
               )}
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Checkbox 
+                  id="rememberMe"
+                  checked={watchedRememberMe}
+                  onCheckedChange={(checked) => setValue('rememberMe', checked as boolean)}
+                />
+                <Label htmlFor="rememberMe" className="text-sm cursor-pointer">
+                  Remember me
+                </Label>
+              </div>
+              <a
+                href="/forgot-password"
+                className="text-sm text-blue-600 hover:text-blue-500"
+              >
+                Forgot password?
+              </a>
             </div>
 
             {error && (
@@ -124,21 +157,6 @@ export function LoginForm() {
               )}
             </Button>
           </form>
-
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Demo Credentials</span>
-              </div>
-            </div>
-            <div className="mt-3 text-sm text-gray-600 text-center">
-              <p><strong>Email:</strong> demo@diagnyx.ai</p>
-              <p><strong>Password:</strong> password123</p>
-            </div>
-          </div>
 
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
