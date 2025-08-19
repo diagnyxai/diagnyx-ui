@@ -34,3 +34,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Claude Code instructions
+CLAUDE.md

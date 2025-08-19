@@ -3,8 +3,8 @@ import { Github, Twitter, Linkedin, Youtube } from 'lucide-react'
 
 const footerLinks = {
   Product: [
-    { name: 'Features', href: '#features' },
-    { name: 'Pricing', href: '#pricing' },
+    { name: 'Features', href: '/features' },
+    { name: 'Pricing', href: '/pricing' },
     { name: 'Changelog', href: '/changelog' },
     { name: 'Roadmap', href: '/roadmap' },
   ],
@@ -68,23 +68,47 @@ export function Footer() {
             </div>
           </div>
           
-          {Object.entries(footerLinks).map(([category, links]) => (
-            <div key={category}>
-              <h3 className="text-white font-semibold mb-4">{category}</h3>
-              <ul className="space-y-2">
-                {links.map((link) => (
-                  <li key={link.name}>
-                    <Link
-                      href={link.href}
-                      className="text-sm text-gray-400 hover:text-white transition-colors"
-                    >
-                      {link.name}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+          {/* Desktop: Single row layout, Mobile: Grid layout */}
+          <div className="col-span-4 hidden lg:flex justify-between">
+            {Object.entries(footerLinks).map(([category, links]) => (
+              <div key={category}>
+                <h3 className="text-white font-semibold mb-4">{category}</h3>
+                <ul className="space-y-2">
+                  {links.map((link) => (
+                    <li key={link.name}>
+                      <Link
+                        href={link.href}
+                        className="text-sm text-gray-400 hover:text-white transition-colors"
+                      >
+                        {link.name}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+          
+          {/* Mobile/Tablet: Grid layout */}
+          <div className="col-span-4 grid grid-cols-2 md:grid-cols-4 gap-8 lg:hidden">
+            {Object.entries(footerLinks).map(([category, links]) => (
+              <div key={category}>
+                <h3 className="text-white font-semibold mb-4">{category}</h3>
+                <ul className="space-y-2">
+                  {links.map((link) => (
+                    <li key={link.name}>
+                      <Link
+                        href={link.href}
+                        className="text-sm text-gray-400 hover:text-white transition-colors"
+                      >
+                        {link.name}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
         </div>
         
         <div className="border-t border-gray-800 mt-12 pt-8">

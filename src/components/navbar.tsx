@@ -8,8 +8,8 @@ import { Menu, X, ChevronDown, User, LogOut, Settings } from 'lucide-react'
 import { useAuthStore } from '@/store/auth'
 
 const navigation = [
-  { name: 'Features', href: '#features' },
-  { name: 'Pricing', href: '#pricing' },
+  { name: 'Features', href: '/features' },
+  { name: 'Pricing', href: '/pricing' },
   { name: 'Documentation', href: '/docs' },
   { name: 'Blog', href: '/blog' },
 ]

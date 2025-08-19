@@ -1,7 +1,8 @@
 import { Navbar } from '@/components/navbar'
 import { Hero } from '@/components/hero'
 import { Features } from '@/components/features'
-import { Pricing } from '@/components/pricing'
+import { CustomerSuccess } from '@/components/customer-success'
+import { CTASection } from '@/components/cta-section'
 import { Footer } from '@/components/footer'
 
 export default function Home() {
@@ -10,7 +11,8 @@ export default function Home() {
       <Navbar />
       <Hero />
       <Features />
-      <Pricing />
+      <CustomerSuccess />
+      <CTASection />
       <Footer />
     </main>
   )
