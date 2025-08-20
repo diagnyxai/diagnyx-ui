@@ -1,5 +1,9 @@
 # Diagnyx UI - Marketing Website
 
+[![Feature Branch CI](https://github.com/diagnyxai/diagnyx-ui/actions/workflows/feature.yml/badge.svg)](https://github.com/diagnyxai/diagnyx-ui/actions/workflows/feature.yml)
+[![Develop CI/CD](https://github.com/diagnyxai/diagnyx-ui/actions/workflows/develop.yml/badge.svg)](https://github.com/diagnyxai/diagnyx-ui/actions/workflows/develop.yml)
+[![Main CI/CD](https://github.com/diagnyxai/diagnyx-ui/actions/workflows/main.yml/badge.svg)](https://github.com/diagnyxai/diagnyx-ui/actions/workflows/main.yml)
+
 Modern, high-performance marketing website for the Diagnyx LLM Observability Platform, built with Next.js 14 and optimized for conversion.
 
 ## 🚀 Features

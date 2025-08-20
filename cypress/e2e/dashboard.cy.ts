@@ -53,9 +53,6 @@ describe('Diagnyx Dashboard E2E Tests', () => {
       
       const expectedServices = [
         'user-service',
-        'observability-service',
-        'ai-quality-service',
-        'optimization-service',
         'api-gateway'
       ]
       

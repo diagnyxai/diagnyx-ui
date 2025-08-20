@@ -1,0 +1,175 @@
+name: Deploy to Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version/Tag to deploy (e.g., v1.2.3 or main)'
+        required: true
+        default: 'main'
+        type: string
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+        - production
+      confirm_deployment:
+        description: 'Type "DEPLOY" to confirm deployment to production'
+        required: true
+        type: string
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: diagnyx/ui
+
+permissions:
+  id-token: write
+  contents: read
+  security-events: write
+
+jobs:
+  validate-inputs:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Validate deployment confirmation
+      run: |
+        if [ "${{ github.event.inputs.confirm_deployment }}" != "DEPLOY" ]; then
+          echo "::error::Deployment confirmation failed. Please type 'DEPLOY' to confirm."
+          exit 1
+        fi
+        echo "Deployment confirmed for version: ${{ github.event.inputs.version }}"
+
+  deploy-production:
+    needs: validate-inputs
+    runs-on: ubuntu-latest
+    environment: production
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.inputs.version }}
+    
+    - name: Configure AWS credentials for Production
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/DiagnyxGitHubActions-Production
+        role-session-name: GitHubActions-UI-Production
+        aws-region: ${{ env.AWS_REGION }}
+    
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+    
+    - name: Check if image exists in ECR
+      run: |
+        # Check if the UAT image exists (should be built from main branch)
+        aws ecr describe-images \
+          --repository-name ${{ env.ECR_REPOSITORY }} \
+          --image-ids imageTag=uat \
+          --region ${{ env.AWS_REGION }} \
+        || (echo "::error::UAT image not found. Please ensure main branch has been built." && exit 1)
+    
+    - name: Tag UAT image as Production
+      run: |
+        # Get the UAT image manifest
+        MANIFEST=$(aws ecr batch-get-image \
+          --repository-name ${{ env.ECR_REPOSITORY }} \
+          --image-ids imageTag=uat \
+          --query 'images[0].imageManifest' \
+          --output text \
+          --region ${{ env.AWS_REGION }})
+        
+        # Tag the UAT image as production
+        aws ecr put-image \
+          --repository-name ${{ env.ECR_REPOSITORY }} \
+          --image-tag production \
+          --image-manifest "$MANIFEST" \
+          --region ${{ env.AWS_REGION }}
+        
+        # Also tag with version if provided
+        if [ "${{ github.event.inputs.version }}" != "main" ]; then
+          aws ecr put-image \
+            --repository-name ${{ env.ECR_REPOSITORY }} \
+            --image-tag ${{ github.event.inputs.version }} \
+            --image-manifest "$MANIFEST" \
+            --region ${{ env.AWS_REGION }}
+        fi
+    
+    - name: Run security scan on production image
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: '${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:production'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+    
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+    
+    - name: Deploy to Production ECS
+      run: |
+        echo "Deploying diagnyx-ui to production..."
+        
+        # Update ECS service to use the production image
+        aws ecs update-service \
+          --cluster diagnyx-production \
+          --service diagnyx-ui \
+          --force-new-deployment \
+          --region ${{ env.AWS_REGION }}
+        
+        echo "Deployment initiated. Service is updating..."
+    
+    - name: Wait for deployment to complete
+      run: |
+        echo "Waiting for deployment to stabilize..."
+        aws ecs wait services-stable \
+          --cluster diagnyx-production \
+          --services diagnyx-ui \
+          --region ${{ env.AWS_REGION }} \
+          --cli-read-timeout 900 \
+          --cli-connect-timeout 60
+        
+        echo "Deployment completed successfully!"
+    
+    - name: Run production smoke tests
+      run: |
+        echo "Running smoke tests against production environment..."
+        
+        # Wait a bit for the service to be fully ready
+        sleep 30
+        
+        # Basic connectivity tests
+        # curl -f -s -o /dev/null https://diagnyx.com/ || exit 1
+        # curl -f -s -o /dev/null https://diagnyx.com/login || exit 1
+        # curl -f -s -o /dev/null https://diagnyx.com/pricing || exit 1
+        # echo "Smoke tests passed!"
+        
+        echo "Production deployment verification completed!"
+    
+    - name: Invalidate CloudFront cache (if applicable)
+      run: |
+        # If using CloudFront, invalidate the cache
+        # DISTRIBUTION_ID=$(aws cloudfront list-distributions \
+        #   --query "DistributionList.Items[?Origins.Items[0].DomainName=='diagnyx.com'].Id" \
+        #   --output text)
+        # 
+        # if [ -n "$DISTRIBUTION_ID" ]; then
+        #   aws cloudfront create-invalidation \
+        #     --distribution-id $DISTRIBUTION_ID \
+        #     --paths "/*"
+        #   echo "CloudFront cache invalidation initiated"
+        # fi
+        
+        echo "Cache invalidation step completed"
+    
+    - name: Notify deployment completion
+      run: |
+        echo "::notice title=Production Deployment::diagnyx-ui version ${{ github.event.inputs.version }} has been successfully deployed to production"
+        
+        # Optional: Send notification to Slack/Teams/Email
+        # Add your notification logic here

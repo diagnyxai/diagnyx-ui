@@ -1,0 +1,117 @@
+name: Feature Branch CI
+
+on:
+  pull_request:
+    branches: [ develop, main ]
+  push:
+    branches: [ 'feature/*', 'feat/*', 'bugfix/*', 'hotfix/*' ]
+
+env:
+  NODE_VERSION: '18'
+  NODE_OPTIONS: '--max_old_space_size=6144'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js ${{ env.NODE_VERSION }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: TypeScript type checking
+      run: npm run type-check
+    
+    - name: Lint code
+      run: npm run lint
+    
+    - name: Check code formatting
+      run: npm run prettier:check
+    
+    - name: Run unit tests
+      run: npm run test:ci
+      env:
+        NODE_ENV: test
+    
+    - name: Generate test coverage
+      run: npm run test:coverage
+      env:
+        NODE_ENV: test
+    
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage/lcov.info
+        fail_ci_if_error: false
+    
+    - name: Build Next.js application
+      run: npm run build
+      env:
+        NODE_ENV: production
+        NEXT_TELEMETRY_DISABLED: 1
+    
+    - name: Build Docker image (test)
+      run: |
+        docker build -t diagnyx-ui:test .
+        docker images diagnyx-ui:test
+    
+    - name: Test Docker image
+      run: |
+        # Test that the Docker image can start
+        docker run --rm -d --name diagnyx-ui-test \
+          -p 3000:3000 \
+          -e NODE_ENV=production \
+          diagnyx-ui:test
+        
+        # Wait for startup
+        sleep 15
+        
+        # Basic health check
+        curl -f http://localhost:3000/ || exit 1
+        
+        # Stop container
+        docker stop diagnyx-ui-test
+    
+    - name: Run security scan with Trivy
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'diagnyx-ui:test'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+    
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+    
+    - name: Run npm audit
+      run: npm audit --audit-level=moderate
+    
+    - name: Check bundle size
+      run: |
+        npm run build
+        # Check if any bundle is larger than 1MB
+        find .next/static -name "*.js" -size +1M -exec echo "Warning: Large bundle found: {}" \;
+    
+    - name: Run Lighthouse CI (if applicable)
+      run: |
+        # Install Lighthouse CI
+        npm install -g @lhci/cli@0.11.x
+        
+        # Start the application
+        npm run start &
+        sleep 15
+        
+        # Run Lighthouse
+        lhci autorun --config=./.lighthouserc.json || echo "Lighthouse CI not configured"
+      env:
+        NODE_ENV: production
