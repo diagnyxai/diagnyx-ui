@@ -9,14 +9,22 @@ import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuthStore } from '@/store/auth';
+import { PasswordStrength } from './password-strength';
 
 const signupSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Please enter a valid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  password: z.string()
+    .min(12, 'Password must be at least 12 characters')
+    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+    .regex(/[0-9]/, 'Password must contain at least one number')
+    .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character'),
   confirmPassword: z.string(),
+  accountType: z.enum(['INDIVIDUAL', 'TEAM', 'ENTERPRISE']).default('INDIVIDUAL'),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -34,26 +42,43 @@ export function SignupForm() {
   const {
     register,
     handleSubmit,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<SignupFormData>({
     resolver: zodResolver(signupSchema),
+    defaultValues: {
+      accountType: 'INDIVIDUAL',
+    },
   });
+
+  const watchedAccountType = watch('accountType');
+  const watchedPassword = watch('password');
 
   const onSubmit = async (data: SignupFormData) => {
     setError('');
     try {
-      const success = await signup({
+      const result = await signup({
         name: data.name,
         email: data.email,
         password: data.password,
+        accountType: data.accountType,
       });
-      if (success) {
-        router.push('/dashboard');
+      
+      if (result.success) {
+        if (result.requiresConfirmation) {
+          // Redirect to email verification page with email as query param
+          router.push(`/verify-email?email=${encodeURIComponent(data.email)}`);
+        } else {
+          // Auto-login successful, redirect to dashboard
+          router.push('/dashboard');
+        }
       } else {
-        setError('Failed to create account. Please try again.');
+        setError(result.error || 'Failed to create account. Please try again.');
       }
-    } catch (err) {
-      setError('An error occurred. Please try again.');
+    } catch (err: any) {
+      console.error('Signup error:', err);
+      setError(err?.message || 'An error occurred. Please try again.');
     }
   };
 
@@ -123,6 +148,7 @@ export function SignupForm() {
               {errors.password && (
                 <p className="text-sm text-red-500">{errors.password.message}</p>
               )}
+              <PasswordStrength password={watchedPassword || ''} />
             </div>
 
             <div className="space-y-2">
@@ -149,6 +175,26 @@ export function SignupForm() {
               </div>
               {errors.confirmPassword && (
                 <p className="text-sm text-red-500">{errors.confirmPassword.message}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="accountType">Account Type</Label>
+              <Select 
+                value={watchedAccountType} 
+                onValueChange={(value) => setValue('accountType', value as 'INDIVIDUAL' | 'TEAM' | 'ENTERPRISE')}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select account type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="INDIVIDUAL">Individual</SelectItem>
+                  <SelectItem value="TEAM">Team</SelectItem>
+                  <SelectItem value="ENTERPRISE">Enterprise</SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.accountType && (
+                <p className="text-sm text-red-500">{errors.accountType.message}</p>
               )}
             </div>
 

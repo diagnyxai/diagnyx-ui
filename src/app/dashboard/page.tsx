@@ -1,5 +1,7 @@
 'use client';
 
+import { ProtectedRoute } from '@/components/auth/route-guard';
+import { useAuth } from '@/hooks/use-auth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,12 +21,17 @@ import {
 } from 'lucide-react';
 
 export default function DashboardPage() {
+  const { user } = useAuth();
+
   return (
-    <div className="space-y-8">
+    <ProtectedRoute>
+      <div className="space-y-8">
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard Overview</h1>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Welcome back{user?.name ? `, ${user.name}` : ''}
+          </h1>
           <p className="text-gray-600 mt-1">Monitor your LLM applications in real-time</p>
         </div>
         <div className="flex space-x-3">
@@ -311,5 +318,6 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
     </div>
+    </ProtectedRoute>
   );
 }
